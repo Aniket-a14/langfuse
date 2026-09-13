@@ -23,7 +23,6 @@ import {
 } from "@/src/features/filters/hooks/useSidebarFilterState";
 import { usePeekTableState } from "@/src/components/table/peek/contexts/PeekTableStateContext";
 import { usePeekNavigation } from "@/src/components/table/peek/hooks/usePeekNavigation";
-import { TablePeekViewTraceDetail } from "@/src/components/table/peek/peek-trace-detail";
 import {
   getScoreFilterConfig,
   observationScopeFilter,
@@ -59,7 +58,13 @@ import useColumnOrder from "@/src/features/column-visibility/hooks/useColumnOrde
 import { BatchExportTableButton } from "@/src/components/BatchExportTableButton";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 import { TableActionMenu } from "@/src/features/table/components/TableActionMenu";
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, {
+  type ReactNode,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import type { TableAction } from "@/src/features/table/types";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useHasEntitlement } from "@/src/features/entitlements/hooks";
@@ -134,6 +139,11 @@ export type ScoresTableProps = {
   showControlsInPageHeader?: boolean;
   /** Skip the default exclusion of internal environments. */
   showAllEnvironments?: boolean;
+  /** Page-owned peek panel; omit when embedded inside a trace/observation view. */
+  renderTracePeek?: (api: {
+    closePeek: () => void;
+    expandPeek: (openInNewTab: boolean) => void;
+  }) => ReactNode;
 };
 
 function createFilterState(
@@ -163,6 +173,7 @@ export default function ScoresTable({
   disableUrlPersistence = false,
   showControlsInPageHeader = false,
   showAllEnvironments = false,
+  renderTracePeek,
 }: ScoresTableProps) {
   const peekContext = usePeekTableState();
 
@@ -1272,16 +1283,11 @@ export default function ScoresTable({
             )}
           </div>
         </ResizableFilterLayout>
-        {peekEnabled && (
-          <TablePeekViewTraceDetail
-            closePeek={closeScorePeek}
-            expandPeek={expandScorePeek}
-            itemType="TRACE"
-            tableName={scoresFilterConfig.tableName}
-            isV4={isV4}
-            projectId={projectId}
-          />
-        )}
+        {peekEnabled &&
+          renderTracePeek?.({
+            closePeek: closeScorePeek,
+            expandPeek: expandScorePeek,
+          })}
       </div>
     </DataTableControlsProvider>
   );
