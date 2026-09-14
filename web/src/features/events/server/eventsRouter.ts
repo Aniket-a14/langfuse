@@ -48,6 +48,10 @@ const GetAllEventsInput = EventsTableOptions.safeExtend({
   ...paginationZod,
 });
 
+const GetSessionEventsInput = GetAllEventsInput.safeExtend({
+  sessionId: zodSchema.string().min(1),
+});
+
 const GetEventsCursorInput = EventsCursorTableOptions.safeExtend({
   limit: paginationZod.limit,
   cursor: zodSchema
@@ -159,6 +163,43 @@ export const eventsRouter = createTRPCRouter({
           });
         },
       );
+    }),
+  sessionAll: protectedGetSessionProcedure
+    .input(GetSessionEventsInput)
+    .query(async ({ input, ctx }) => {
+      const { filterState, hasNoMatches } = await applyCommentFilters({
+        filterState: input.filter ?? [],
+        prisma: ctx.prisma,
+        projectId: input.projectId,
+        objectType: "OBSERVATION",
+      });
+
+      if (hasNoMatches) {
+        return { observations: [], hasMore: false };
+      }
+
+      const normalizedOrderBy = normalizeOrderByForTable({
+        orderBy: input.orderBy,
+        expectedTimeColumn: "startTime",
+      });
+
+      return getEventList({
+        projectId: input.projectId,
+        filter: [
+          ...filterState,
+          {
+            column: "sessionId",
+            type: "string",
+            operator: "=",
+            value: input.sessionId,
+          },
+        ],
+        searchQuery: input.searchQuery ?? undefined,
+        searchType: input.searchType,
+        orderBy: normalizedOrderBy,
+        page: input.page,
+        limit: input.limit,
+      });
     }),
   listCursor: protectedProjectProcedure
     .input(GetEventsCursorInput)
